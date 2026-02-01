@@ -11,11 +11,6 @@
             box-sizing: border-box;
         }   
         body {
-<script type="module">
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-         
-           
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             height: 100vh;
@@ -264,8 +259,7 @@
         }
     </style>
 </head>
-};
-    <body>
+<body>
     <div class="container">
         <h1>🐋 مسابقة قصة سيدنا يونس عليه السلام 🐋</h1>
         <div style="text-align: center; color: #000000; font-size: 1.1em; margin-bottom: 20px; font-weight: 900;">
@@ -303,7 +297,33 @@
         </div>
     </div>
 
-    <script>
+    <!-- Firebase SDK -->
+    <script type="module">
+        // استيراد Firebase SDK
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, set, onValue, update } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+        // ====================================
+        // Firebase Configuration
+        // ضع معلومات Firebase الخاصة بك هنا
+        // ====================================
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // تهيئة Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // مرجع البيانات في قاعدة البيانات
+        const gameRef = ref(database, 'quiz-game');
+
         const questions = [
             // الأسئلة الأولى (3 اختيارات)
             {
@@ -473,10 +493,35 @@
         let scores = [0, 0];
         let answered = false;
 
-        function selectTeam(team) {
+        // الاستماع للتغييرات في قاعدة البيانات
+        onValue(gameRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                currentQuestion = data.currentQuestion || 0;
+                scores = data.scores || [0, 0];
+                currentTeam = data.currentTeam || 0;
+                
+                // تحديث واجهة المستخدم
+                document.getElementById('score1').textContent = scores[0];
+                document.getElementById('score2').textContent = scores[1];
+                
+                // إذا انتهت الأسئلة
+                if (currentQuestion >= questions.length && data.gameEnded) {
+                    showResults();
+                }
+            }
+        });
+
+        window.selectTeam = function(team) {
             if (answered) return;
             
             currentTeam = team;
+            
+            // تحديث Firebase
+            update(gameRef, {
+                currentTeam: team
+            });
+            
             document.getElementById('teamSelection').classList.add('hidden');
             showQuestion();
         }
@@ -542,8 +587,21 @@
 
             setTimeout(() => {
                 currentQuestion++;
-                currentTeam = 0; // إعادة تعيين الفريق
-                answered = false; // إعادة تعيين حالة الإجابة
+                currentTeam = 0;
+                answered = false;
+                
+                // تحديث Firebase
+                const updateData = {
+                    currentQuestion: currentQuestion,
+                    scores: scores,
+                    currentTeam: 0
+                };
+                
+                if (currentQuestion >= questions.length) {
+                    updateData.gameEnded = true;
+                }
+                
+                update(gameRef, updateData);
                 
                 if (currentQuestion >= questions.length) {
                     showResults();
@@ -626,11 +684,20 @@
             createStars();
         }
 
-        function restartGame() {
+        window.restartGame = function() {
             currentQuestion = 0;
             currentTeam = 0;
             scores = [0, 0];
             answered = false;
+            
+            // إعادة تعيين Firebase
+            set(gameRef, {
+                currentQuestion: 0,
+                currentTeam: 0,
+                scores: [0, 0],
+                gameEnded: false
+            });
+            
             document.getElementById('score1').textContent = '0';
             document.getElementById('score2').textContent = '0';
             document.getElementById('resultScreen').classList.add('hidden');
@@ -638,17 +705,4 @@
         }
     </script>
 </body>
-
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
